@@ -1,5 +1,5 @@
 ---
-name: cast-sender-sdk
+name: android-sender-sdk
 description: Select or create an Android app, prepare its build environment, obtain the official SDK AAR and credentials, and integrate or incrementally extend the Android sender SDK for discovery, connection, casting, and playback control. Use when implementing, testing, or reviewing sender SDK integration; not for receiver-side development.
 ---
 

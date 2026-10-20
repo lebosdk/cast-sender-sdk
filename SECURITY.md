@@ -2,10 +2,10 @@
 
 ## Scope
 
-This repository contains a Codex Skill and helper scripts. It may contact the official
-HPPlay platform for credential onboarding and the official SDK CDN for AAR acquisition when a
-developer explicitly runs the corresponding workflow. It is not a credential vault and must
-not contain production secrets.
+This repository contains Codex / Claude Code Skills (Android and iOS) and helper scripts.
+It may contact the official HPPlay platform for credential onboarding and the official SDK
+CDN for AAR / xcframework acquisition when a developer explicitly runs the corresponding
+workflow. It is not a credential vault and must not contain production secrets.
 
 ## Reporting a Vulnerability
 
@@ -31,5 +31,6 @@ retained by existing clones and remote references.
 
 ## Supported Versions
 
-Security fixes target the latest version listed in `VERSION`. When reporting an older version,
-include the exact version and whether the issue remains reproducible after updating.
+Security fixes target the latest version listed in the platform's `android/VERSION` or
+`ios/VERSION`. When reporting an older version, include the exact version and whether the
+issue remains reproducible after updating.

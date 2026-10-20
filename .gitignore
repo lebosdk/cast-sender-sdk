@@ -24,6 +24,7 @@ local.properties
 
 # SDK artifacts and generated credential/configuration files
 *.aar
+*.xcframework
 SkillSdkConfig.java
 credentials.properties
 credentials*.properties
