@@ -6,7 +6,7 @@ HPPlay/Lelink（乐播）发送端 SDK 接入 Skill 集合，适用于 Codex 和
 | 目录 | Skill 名 | 用途 |
 | --- | --- | --- |
 | [`android/`](android/README.md) | `android-sender-sdk` | Android 发送端接入 |
-| [`ios/`](ios/SKILL.md) | `ios-sender-sdk` | iOS 发送端接入（推送 + 镜像） |
+| [`ios/`](ios/README.md) | `ios-sender-sdk` | iOS 发送端接入（推送 + 镜像） |
 
 本仓库不包含 SDK 产物（AAR / xcframework）、平台账号凭证或任何特定应用的标识。
 
