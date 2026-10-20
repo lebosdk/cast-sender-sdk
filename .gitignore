@@ -1,0 +1,39 @@
+# macOS and editor files
+.DS_Store
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Python caches and local environments
+__pycache__/
+*.py[cod]
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+.venv/
+venv/
+env/
+
+# Generated Android/project state
+.gradle/
+build/
+**/build/
+local.properties
+*.iml
+
+# SDK artifacts and generated credential/configuration files
+*.aar
+SkillSdkConfig.java
+credentials.properties
+credentials*.properties
+*.jks
+*.keystore
+*.p12
+*.pem
+*.key
+
+# Local logs and packaging output
+*.log
+dist/
+out/
