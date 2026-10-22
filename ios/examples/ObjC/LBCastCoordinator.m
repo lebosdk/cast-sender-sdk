@@ -1,4 +1,6 @@
 #import "LBCastCoordinator.h"
+#import <UIKit/UIKit.h>
+#import <Network/Network.h>
 
 @interface LBCastCoordinator () <LBLelinkBrowserDelegate, LBLelinkConnectionDelegate, LBLelinkPlayerDelegate>
 @property (nonatomic, copy, readwrite) NSArray<LBLelinkService *> *services;
@@ -6,6 +8,15 @@
 @property (nonatomic, strong) LBLelinkBrowser *browser;
 @property (nonatomic, strong) LBLelinkConnection *connection;
 @property (nonatomic, strong) LBLelinkPlayer *player;
+/// 鉴权用的凭据，startWithAppId 时保存
+@property (nonatomic, copy) NSString *appId;
+@property (nonatomic, copy) NSString *secretKey;
+/// 鉴权状态：是否已成功 / 进行中 / 因网络失败等待重试，默认都是 NO
+@property (nonatomic, assign) BOOL authorized;
+@property (nonatomic, assign) BOOL authorizing;
+@property (nonatomic, assign) BOOL waitingNetwork;
+/// 网络监听，网络恢复时重新鉴权
+@property (nonatomic, strong) nw_path_monitor_t pathMonitor;
 @end
 
 @implementation LBCastCoordinator
@@ -35,15 +46,51 @@
 }
 
 - (void)startWithAppId:(NSString *)appId secretKey:(NSString *)secretKey {
+    self.appId = appId;
+    self.secretKey = secretKey;
+    // 注意：鉴权成功前 SDK 其他功能都不可用；网络恢复或回到前台时重新鉴权
+    if (!self.pathMonitor) {
+        self.pathMonitor = nw_path_monitor_create();
+        nw_path_monitor_set_queue(self.pathMonitor, dispatch_get_main_queue());
+        __weak typeof(self) weakSelf = self;
+        nw_path_monitor_set_update_handler(self.pathMonitor, ^(nw_path_t path) {
+            if (nw_path_get_status(path) == nw_path_status_satisfied) {
+                [weakSelf retryAuthIfNeeded];
+            }
+        });
+        nw_path_monitor_start(self.pathMonitor);
+        [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(retryAuthIfNeeded) name:UIApplicationDidBecomeActiveNotification object:nil];
+    }
+    [self auth];
+}
+
+/// 只在上次因网络失败时重试；401 / 402 等不重试，否则会进 180 秒冷却（1002）
+- (void)retryAuthIfNeeded {
+    if (self.waitingNetwork) {
+        [self auth];
+    }
+}
+
+- (void)auth {
+    if (self.authorized || self.authorizing) {
+        return;
+    }
+    self.authorizing = YES;
+    self.waitingNetwork = NO;
+    NSString *appId = self.appId, *secretKey = self.secretKey;
     dispatch_async(dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0), ^{
         NSError *error = nil;
         BOOL ok = [LBLelinkKit authWithAppid:appId secretKey:secretKey error:&error];
         dispatch_async(dispatch_get_main_queue(), ^{
+            self.authorizing = NO;
             if (!ok) {
+                // NSURLErrorDomain（如国行首次启动未允许无线数据的 -1009）：等网络恢复或回到前台再鉴权
                 // 402：secretKey 应为平台 md5Key；1002：鉴权失败后 180 秒冷却
+                self.waitingNetwork = [error.domain isEqualToString:NSURLErrorDomain];
                 [self reportError:error];
                 return;
             }
+            self.authorized = YES;
             self.browser = [[LBLelinkBrowser alloc] init];
             self.browser.delegate = self;
             // 注意：蓝牙搜索默认关闭，不打开就发现不了不在同一 Wi-Fi 的官方收端

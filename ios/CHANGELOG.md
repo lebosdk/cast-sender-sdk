@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.5
+
+- The Skill now asks the agent to read every file in the Skill directory before step 1, so it knows all supported capabilities.
+- Free-edition rules: every SDK feature works only after auth succeeds and auth needs the network; the App must watch the network (`NWPathMonitor`) and authenticate again when the network comes back or the App returns to the foreground. `error-handling.md` lists -1009 and other `NSURLErrorDomain` auth failures.
+- `LBCastCoordinator` implements it: after an `NSURLErrorDomain` auth failure it authenticates again when `NWPathMonitor` reports the network as satisfied or the App becomes active; 401 / 402 are not retried.
+
 ## 0.2.4
 
 - Playback controls: after push works, the Skill lists every control the SDK supports (pause/resume, seek, volume, rate, video-list episodes, definition) in a numbered menu and builds the ones the user picks; stop is always added. Each control follows its `LBCastCapability` flag.

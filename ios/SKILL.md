@@ -7,6 +7,8 @@ description: Integrate the HPPlay (Lebo) iOS sender SDK free edition into an exi
 
 Resolve every reference relative to this file. Treat the headers inside the installed `LBLelinkKit.xcframework` as the source of truth; if a name here differs from the installed headers, follow the headers.
 
+**Read everything first.** Before step 1, read every file in this Skill directory (`SKILL.md`, all of `references/`, all of `examples/`, and the usage header of each file in `scripts/`) so you know every capability the SDK supports and every rule below. Do not start changing the project from this file alone.
+
 Media push covers search, connect, push online or local media, playback control, capability query, and diagnostics; it also runs in the simulator. Screen mirroring adds a Broadcast Upload Extension, runs on a real device only, and needs a signing team that can register an App Group. The user picks which of the two to integrate (step 2). Both share the SDK wiring, credentials, and coordinator, so mirroring-only still goes through steps 3 to 7.
 
 ## Workflow
@@ -37,6 +39,7 @@ Media push covers search, connect, push online or local media, playback control,
 
 ## Free-edition rules the code must respect
 
+- Every SDK feature (search, connect, push, mirroring) works only after `authWithAppid:secretKey:error:` succeeds, and auth needs the network. When auth fails, nothing else runs. The App must watch the network (`NWPathMonitor`) and authenticate again when the network becomes available or the App returns to the foreground, until auth succeeds; then start searching. `examples/ObjC/LBCastCoordinator` already does this; keep it. Typical case: on a China-region iPhone the first launch fails with `NSURLErrorDomain` -1009 until the user allows "使用无线数据". Network errors do not start the 180 s cooldown; only 401 / 402 do (then 1002 within 180 s).
 - Only the official Lebo TV receiver app ("乐播投屏 TV 版") is eligible. Other receivers are removed from search results and rejected on connect; this is expected, not a bug.
 - Only one connection at a time: connecting a second `LBLelinkConnection` disconnects the previous one.
 - Over a cross-network (non-LAN) connection, local media cannot be pushed; push a URL the TV can reach.

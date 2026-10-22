@@ -8,6 +8,7 @@ Keep the domain and numeric code of every `NSError`; do not merge different fail
 | -1701 | `LBLelinkBrowserErrorDomain`, `lelinkBrowser:onError:` | No device answered within 10 s | Check Wi-Fi, local network permission, AP isolation |
 | -1702 | `LBLelinkBrowserErrorDomain`, `lelinkBrowser:onError:` | QR / cast code points to a non-official receiver | Install guide; no device is delivered |
 | -1300 | `LBLelinkBrowserErrorDomain` | No network | Network hint (no -1701 in this case) |
+| -1009 and other `NSURLErrorDomain` codes | `authWithAppid:secretKey:error:` | Auth could not reach the server (no network, or "使用无线数据" not yet allowed on a China-region iPhone). No SDK feature works until auth succeeds | Network hint; authenticate again when the network becomes available or the App returns to the foreground |
 | -1500 | `LBLelinkBrowserErrorDomain` | `NSBonjourServices` / `NSLocalNetworkUsageDescription` missing | Fix Info.plist (rerun `integrate_sdk.rb`) |
 | -2800 | `LBLelinkConnectionErrorDomain`, `lelinkConnection:onError:` | Receiver is not the official app; no connection was attempted | Install guide |
 | -3900 | `LBLelinkPlayerErrorDomain`, `lelinkPlayer:onError:` | Local media over a cross-network connection; nothing was sent | Ask for a URL the TV can reach |

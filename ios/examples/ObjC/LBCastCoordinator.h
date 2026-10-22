@@ -31,7 +31,7 @@ NS_ASSUME_NONNULL_BEGIN
 
 /// 打开 SDK 日志，在 startWithAppId 之前调用；console：Xcode 控制台打印（SDK 默认开），file：保存到沙盒 Caches/LBLelinkKit（最多 10 MB，默认关）
 - (void)enableLogConsole:(BOOL)console file:(BOOL)file;
-/// 鉴权成功后开始搜索；注意：鉴权在后台线程执行
+/// 鉴权成功后开始搜索；因网络失败时，网络恢复或回到前台自动重新鉴权；注意：鉴权在后台线程执行
 - (void)startWithAppId:(NSString *)appId secretKey:(NSString *)secretKey;
 /// 连接搜索回调里给出的设备对象
 - (void)connect:(LBLelinkService *)service;
