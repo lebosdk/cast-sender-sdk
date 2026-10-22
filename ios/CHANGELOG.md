@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.2.4
+
+- Playback controls: after push works, the Skill lists every control the SDK supports (pause/resume, seek, volume, rate, video-list episodes, definition) in a numbered menu and builds the ones the user picks; stop is always added. Each control follows its `LBCastCapability` flag.
+- `LBCastCoordinator` wraps `pause`, `resumePlay`, `seekTo:`, `setVolume:`, `setPlaySpeed:`, `playVideoList:startMediaId:`, `playMediaId:`, `playNext`, `playPrevious`, `stop`, and adds `onProgress` / `onCurrentMediaId`.
+- `api-reference.md` maps each capability to its API; acceptance now checks that picked controls exist.
+- The control menu is shown once the push code is written, without waiting for a TV; item 6 says definition is switched on the TV.
+- `api-reference.md` spells out the definition list: `clarityType` goes on each sub-source, and the outer `mediaURLString` is not sent when sub-sources exist.
+- `LBCastCoordinator capability` logs the `queryCastCapability` result required by acceptance.
+- Connection methods: the same step shows a menu for cast-code input and QR scan (needed to reach a TV outside the Wi-Fi for cloud push and cloud mirroring). `LBCastCoordinator connectWithQRCode:` and the `LBQRScanViewController` example are added; `integrate_sdk.rb --camera` adds `NSCameraUsageDescription`.
+- Fix: `LBMirrorController` also calls `cleanMirrorDevice` when the broadcast is stopped from Control Center, as `mirroring.md` already described.
+- `SampleHandler` template implements `hostAppReceiveHeartBeat` and `lelinkMirrorExtensionMirroringProvider:` (empty; the SDK rejects Zego itself), removing the missing-protocol-method warnings.
+- Fix: `integrate_mirror.rb --app-group` replaces the old App Group in both entitlements and in the extension's `SampleHandler.m` instead of appending; without `--app-group` it keeps the last value from `LeboMirrorConfig.h`.
+- `onboard.py` records the Bundle ID in the credentials file and `--check` / reuse stop when the target's Bundle ID differs (otherwise auth fails with 402).
+- Scope 2 or 3 verifies with the device build without signing; the mirror frameworks are device-only, so the simulator build fails by design.
+- Scope menu: a new integration asks for `1. 仅媒体推送`, `2. 仅手机屏幕镜像`, or `3. 媒体推送 + 手机屏幕镜像` (no timeout) instead of integrating push only unless mirroring was asked for. Mirroring-only keeps the SDK wiring and coordinator but skips push UI and the playback menu.
+- Logs: the same step shows a menu for console printing and saving log files; `LBCastCoordinator enableLogConsole:file:` wraps `enableLog:` / `enableLogFileSave:`. The free-edition SDK masks `secretKey` in the auth-failure log (first 4 characters only), since logs can now be saved to files.
+- `LBCastCoordinator` auto-connects only devices whose `sourceStyle` is cast code or QR scan; it does not implement `didFindLelinkServiceFromQRCode:`, which fires again for every scan.
+
 ## 0.2.3
 
 - The SDK is no longer shipped inside the Skill: `obtain_sdk.py` downloads `https://lebotob.hpplay.cn/sdk/iOS/Release/ios-sender-sdk.zip` by default; `--local` still installs a supplied package. `--cdn` is kept as a no-op for older instructions.

@@ -1,7 +1,7 @@
 #!/usr/bin/env ruby
 # 给已接入推送的工程加屏幕镜像：新建录屏扩展 target、配 App Group、链接与嵌入镜像 framework。可重复执行，已有的不重复加。
 # 用法：ruby integrate_mirror.rb --project <X.xcodeproj> --target <App target> [--team <团队 ID>] [--app-group <group.xxx>] [--extension <扩展名>] [--check]
-# 默认：扩展名 LeboBroadcast；App Group 为 group.<App Bundle ID>；团队沿用 App 的 DEVELOPMENT_TEAM
+# 默认：扩展名 LeboBroadcast；App Group 沿用上次生成的值，首次为 group.<App Bundle ID>；团队沿用 App 的 DEVELOPMENT_TEAM
 # 注意：先跑 integrate_sdk.rb 接入推送；镜像只能真机运行，签名需要能注册 App Group 的开发者团队
 require "xcodeproj"
 # 注意：终端未设 UTF-8 时按 US-ASCII 读文件，Info.plist 含中文会报 invalid byte sequence
@@ -43,8 +43,13 @@ release = app.build_configurations.find { |c| c.name == "Release" } || app.build
 bundle_id = release.build_settings["PRODUCT_BUNDLE_IDENTIFIER"].to_s
 team = opts[:team] || release.build_settings["DEVELOPMENT_TEAM"].to_s
 abort("App 没有设置签名团队，用 --team 指定") if team.empty?
-app_group = opts[:app_group] || (bundle_id.include?("$") ? nil : "group.#{bundle_id}")
+# 上次生成的 App Group：不传 --app-group 时沿用；换了新值就把旧值从 entitlements 和 SampleHandler 里换掉
+app_src = File.dirname(File.join(project_dir, release.build_settings["INFOPLIST_FILE"].to_s))
+config_h = File.join(app_src, "LeboMirrorConfig.h")
+prev_group = File.exist?(config_h) ? File.read(config_h)[/LeboMirrorAppGroupId = @"([^"]+)"/, 1] : nil
+app_group = opts[:app_group] || prev_group || (bundle_id.include?("$") ? nil : "group.#{bundle_id}")
 abort("Bundle ID 含变量，用 --app-group 指定 App Group") unless app_group
+old_group = prev_group if prev_group && prev_group != app_group
 ext_name = opts[:extension]
 changes = []
 
@@ -94,11 +99,12 @@ add_app_group = lambda do |target, default_rel|
   path = File.join(project_dir, rel)
   ent = File.exist?(path) ? Xcodeproj::Plist.read_from_path(path) : {}
   groups = ent["com.apple.security.application-groups"] || []
-  unless groups.include?(app_group)
-    changes << "#{target.name} entitlements 加 App Group #{app_group}"
+  wanted = (groups - [old_group].compact) | [app_group]
+  unless wanted == groups
+    changes << (old_group && groups.include?(old_group) ? "#{target.name} entitlements App Group #{old_group} 换成 #{app_group}" : "#{target.name} entitlements 加 App Group #{app_group}")
     unless opts[:check]
       FileUtils.mkdir_p(File.dirname(path))
-      ent["com.apple.security.application-groups"] = groups + [app_group]
+      ent["com.apple.security.application-groups"] = wanted
       Xcodeproj::Plist.write_to_path(ent, path)
     end
   end
@@ -158,6 +164,13 @@ if ext.nil?
   end
 end
 
+# 已有扩展换 App Group：SampleHandler.m 里的旧值一起换掉，否则 App 和扩展用的 App Group 不一致
+handler = File.join(project_dir, ext_name, "SampleHandler.m")
+if ext && old_group && File.exist?(handler) && File.read(handler).include?("\"#{old_group}\"")
+  changes << "#{ext_name}/SampleHandler.m App Group #{old_group} 换成 #{app_group}"
+  File.write(handler, File.read(handler).gsub("\"#{old_group}\"", "\"#{app_group}\"")) unless opts[:check]
+end
+
 unless opts[:check] && ext.nil?
   add_list_setting.call(ext, "OTHER_LDFLAGS", ["-ObjC"])
   add_list_setting.call(ext, "FRAMEWORK_SEARCH_PATHS", ["$(PROJECT_DIR)/#{SDK_DIR}/Mirror/Extension"])
@@ -213,8 +226,6 @@ end
 add_app_group.call(app, "#{app.name}/#{app.name}.entitlements")
 
 # 3. App 端 App Group 常量，供 LBLelinkMirrorEngine / LBLelinkKit setAppGroupId 使用
-app_src = File.dirname(File.join(project_dir, release.build_settings["INFOPLIST_FILE"].to_s))
-config_h = File.join(app_src, "LeboMirrorConfig.h")
 content = "// 由 integrate_mirror.rb 生成：与录屏扩展相同的 App Group\n#import <Foundation/Foundation.h>\n\nstatic NSString * const LeboMirrorAppGroupId = @\"#{app_group}\";\nstatic NSString * const LeboMirrorExtensionBundleId = @\"#{bundle_id}.#{ext_name}\";\n"
 unless File.exist?(config_h) && File.read(config_h) == content
   changes << "生成 #{config_h.sub(project_dir + '/', '')}"

@@ -37,6 +37,8 @@ PROPERTY_KEYS = {
     "md5Key": "hpplay.md5Key",
 }
 LEGACY_ENVIRONMENT_PROPERTY = "hpplay.environment"
+# 凭据所属的 Bundle ID；SDK 鉴权签名带运行时 Bundle ID，不一致服务端返回 402
+BUNDLE_ID_PROPERTY = "hpplay.bundleId"
 CREDENTIALS_FILE = "LeboSenderSDK/skill-credentials.properties"
 PLATFORM_TYPE_IOS = 2
 
@@ -526,13 +528,20 @@ class CredentialsWriter:
                     prefix = "" if not existing or existing.endswith("\n") else "\n"
                     _atomic_write(ignore_file, existing + prefix + line + "\n")
 
-    def write(self, credentials: Dict[str, str]) -> None:
+    def read_bundle_id(self) -> Optional[str]:
+        if not self.path.is_file():
+            return None
+        match = re.search(r"^" + re.escape(BUNDLE_ID_PROPERTY) + r"\s*=\s*(.*)$", self.path.read_text(encoding="utf-8"), re.MULTILINE)
+        return match.group(1).strip() if match and match.group(1).strip() else None
+
+    def write(self, credentials: Dict[str, str], bundle_id: str) -> None:
         self._ensure_config_ignored()
         self._validate_config_file()
         values = {
             PROPERTY_KEYS[name]: _escape_property(credentials[name])
             for name in PROPERTY_KEYS
         }
+        values[BUNDLE_ID_PROPERTY] = _escape_property(bundle_id)
         lines = []
         found = set()
         if self.path.exists():
@@ -658,6 +667,21 @@ class OnboardingFlow:
         self.writer = writer
         self.state = store.load()
 
+    def _check_bundle_id(self) -> None:
+        """凭据记录的 Bundle ID 与当前 target 不一致时停止；旧凭据文件没有记录时只提示"""
+        recorded = self.writer.read_bundle_id()
+        if recorded is None:
+            print("Note: the credentials file does not record a Bundle ID; make sure the App ID was created for " + self.args.package_name + ".")
+        elif recorded != self.args.package_name:
+            raise OnboardingError(
+                "These credentials belong to Bundle ID " + recorded + ", but the target now uses "
+                + self.args.package_name + "; SDK auth would fail with 402. Restore the Bundle ID, "
+                "or onboard again with a new --credentials-file.",
+                show_fallback=False,
+            )
+        else:
+            print("Bundle ID matches the credentials: " + recorded)
+
     def run(self) -> None:
         self.writer.validate_destination()
         existing_credentials = self.writer.read_credentials()
@@ -668,6 +692,7 @@ class OnboardingFlow:
             print("Bundle ID: " + self.args.package_name)
             print("Credentials file: " + str(self.writer.path))
             if existing_credentials:
+                self._check_bundle_id()
                 self.writer.verify_code_config(existing_credentials)
                 print("SDK credential mapping is valid: APP_SECRET uses platform md5Key.")
             else:
@@ -678,6 +703,7 @@ class OnboardingFlow:
             print("Configuration is valid; no network requests were made.")
             return
         if existing_credentials:
+            self._check_bundle_id()
             self.writer.ensure_code_config(existing_credentials)
             if self.writer.swift:
                 _add_to_target(self.args.xcodeproj, self.args.target, self.writer.config_path)
@@ -696,7 +722,7 @@ class OnboardingFlow:
         if not token:
             token = self._authenticate()
         credentials = self._create_app_with_reauth(token)
-        self.writer.write(credentials)
+        self.writer.write(credentials, self.args.package_name)
         if self.writer.swift:
             _add_to_target(self.args.xcodeproj, self.args.target, self.writer.config_path)
         self.state["appId"] = credentials["appId"]

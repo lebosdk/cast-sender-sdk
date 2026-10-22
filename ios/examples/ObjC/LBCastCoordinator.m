@@ -29,6 +29,11 @@
     return self;
 }
 
+- (void)enableLogConsole:(BOOL)console file:(BOOL)file {
+    [LBLelinkKit enableLog:console];
+    [LBLelinkKit enableLogFileSave:file];
+}
+
 - (void)startWithAppId:(NSString *)appId secretKey:(NSString *)secretKey {
     dispatch_async(dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0), ^{
         NSError *error = nil;
@@ -63,6 +68,17 @@
     }];
 }
 
+- (void)connectWithQRCode:(NSString *)qrCode {
+    // 注意：SDK 要求子线程调用，会阻塞
+    dispatch_async(dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0), ^{
+        NSError *error = nil;
+        // 成功时设备从 lelinkBrowser:didFindLelinkService:fromSourceStyle: 回调（ScanQRCode）
+        if (![self.browser searchForLelinkServiceFormQRCode:qrCode onError:&error]) {
+            [self reportError:error];
+        }
+    });
+}
+
 - (void)playOnlineVideo:(NSString *)url {
     LBLelinkPlayerItem *item = [[LBLelinkPlayerItem alloc] init];
     item.mediaType = LBLelinkMediaTypeVideoOnline;
@@ -71,7 +87,57 @@
 }
 
 - (LBCastCapability *)capability {
-    return [self.player queryCastCapability];
+    LBCastCapability *capability = [self.player queryCastCapability];
+    // 验收要求打出能力查询结果
+    NSLog(@"[LBCast] queryCastCapability: %@", capability);
+    return capability;
+}
+
+#pragma mark - 播控
+
+- (void)pause {
+    [self.player pause];
+}
+
+- (void)resumePlay {
+    [self.player resumePlay];
+}
+
+- (void)seekTo:(NSInteger)seconds {
+    [self.player seekTo:seconds];
+}
+
+- (void)setVolume:(NSInteger)value {
+    [self.player setVolume:value];
+}
+
+- (void)setPlaySpeed:(double)rate {
+    [self.player setPlaySpeedWithRate:[self.player playSpeedRateTypeWithRate:rate]];
+}
+
+- (BOOL)playVideoList:(NSArray<LBLelinkPlayerItem *> *)items startMediaId:(NSString *)startMediaId {
+    if (![self.player canPushVideoList]) {
+        return NO;
+    }
+    // 0：片源长期有效
+    [self.player pushVideoList:items validPeriod:0 startMediaId:startMediaId];
+    return YES;
+}
+
+- (void)playMediaId:(NSString *)mediaId {
+    [self.player playVideoListToMediaId:mediaId];
+}
+
+- (void)playNext {
+    [self.player playNextMediaInVideoList];
+}
+
+- (void)playPrevious {
+    [self.player playPrevMediaInVideoList];
+}
+
+- (void)stop {
+    [self.player stop];
 }
 
 #pragma mark - 错误分流
@@ -103,8 +169,12 @@
     [self reportError:error];
 }
 
-// 投屏码 / 扫码解析出的设备，直接连接
+// 投屏码 / 扫码解析出的设备直接连接；注意：云端匹配等其他来源也走这里，不自动连
+// 注意：不要实现 didFindLelinkServiceFromQRCode:，扫码会两个回调都走，且它会重复回调
 - (void)lelinkBrowser:(LBLelinkBrowser *)browser didFindLelinkService:(LBLelinkService *)lelinkService fromSourceStyle:(LBLelinkServiceSourceStyle)sourceStyle {
+    if (sourceStyle != LBLelinkServiceSourceStyleInputCastCode && sourceStyle != LBLelinkServiceSourceStyleScanQRCode) {
+        return;
+    }
     dispatch_async(dispatch_get_main_queue(), ^{ [self connect:lelinkService]; });
 }
 
@@ -139,6 +209,16 @@
 
 - (void)lelinkPlayer:(LBLelinkPlayer *)player playStatus:(LBLelinkPlayStatus)playStatus {
     dispatch_async(dispatch_get_main_queue(), ^{ if (self.onPlayStatus) self.onPlayStatus(playStatus); });
+}
+
+- (void)lelinkPlayer:(LBLelinkPlayer *)player progressInfo:(LBLelinkProgressInfo *)progressInfo {
+    if (!progressInfo) return;
+    NSInteger current = progressInfo.currentTime, duration = progressInfo.duration;
+    dispatch_async(dispatch_get_main_queue(), ^{ if (self.onProgress) self.onProgress(current, duration); });
+}
+
+- (void)lelinkPlayer:(LBLelinkPlayer *)player currentMediaId:(NSString *)mediaId {
+    dispatch_async(dispatch_get_main_queue(), ^{ if (self.onCurrentMediaId) self.onCurrentMediaId(mediaId); });
 }
 
 - (void)lelinkPlayer:(LBLelinkPlayer *)player onError:(NSError *)error {

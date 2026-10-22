@@ -2,7 +2,7 @@
 
 Mirroring sends the phone screen to the TV through a Broadcast Upload Extension. It works on a real device only (the system broadcast extension does not run in the simulator) and needs a signing team that can register an App Group.
 
-Integrate media push first (`integrate_sdk.rb`, coordinator, credentials). Mirroring reuses its `LBLelinkConnection`.
+Wire the SDK first (`integrate_sdk.rb`, credentials, coordinator), also for a mirroring-only integration. Mirroring reuses the coordinator's `LBLelinkConnection`.
 
 ## Wiring the project
 
@@ -11,7 +11,7 @@ Integrate media push first (`integrate_sdk.rb`, coordinator, credentials). Mirro
 | Default | Value |
 |---|---|
 | Extension target | `LeboBroadcast`, bundle ID `<App bundle ID>.LeboBroadcast` |
-| App Group | `group.<App bundle ID>`; pass `--app-group` when the bundle ID contains `$(...)` |
+| App Group | The value from the last run (read from `LeboMirrorConfig.h`), else `group.<App bundle ID>`; pass `--app-group` when the bundle ID contains `$(...)` or the group cannot be registered. A new value replaces the old one in both entitlements and in the extension's `SampleHandler.m` |
 | Signing team | The App's `DEVELOPMENT_TEAM`; pass `--team` when it is empty |
 
 It creates the extension (`SampleHandler`, `Info.plist` with `com.apple.broadcast-services-upload`, entitlements), links and embeds the mirror frameworks in both targets, adds the App Group to both entitlements, and writes `<App dir>/LeboMirrorConfig.h` with `LeboMirrorAppGroupId` and `LeboMirrorExtensionBundleId`. `--check` lists what is missing; rerunning must print `镜像已接入，无需改动`.

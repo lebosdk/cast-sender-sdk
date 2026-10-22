@@ -18,8 +18,8 @@ media push, playback control, screen mirroring, error handling, and acceptance c
 - Reusing existing credentials or onboarding Skill-managed credentials safely.
 - Implementing search (including Bluetooth discovery and cast-code connection), connection,
   online/local media push, playback control, capability query, and diagnostics.
-- Screen mirroring through a Broadcast Upload Extension with an App Group, on top of a working
-  media-push integration.
+- Screen mirroring through a Broadcast Upload Extension with an App Group. The user picks push only,
+  mirroring only, or both; mirroring reuses the same SDK wiring and coordinator.
 
 The Skill does not create new Xcode projects, implement receiver/TV applications, implement
 server APIs, or produce formal SDK packages.

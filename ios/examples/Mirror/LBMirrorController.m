@@ -100,6 +100,7 @@
 - (void)mirrorDidBroadcastExtensionStopedMirrorStype:(LBLelinkMirrorStype)mirrorStype {
     // 用户从控制中心停止录屏时走这里
     [self sendCloudExitIfNeeded];
+    [[LBLelinkMirrorEngine shareInstance] cleanMirrorDevice];
     [self updateMirroring:NO];
 }
 

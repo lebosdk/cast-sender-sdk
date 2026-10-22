@@ -55,4 +55,12 @@ static NSString * const kLeboAppGroupId = @"__LEBO_APP_GROUP_ID__";
     [self finishWithMessage:[NSString stringWithFormat:@"镜像出错：%ld", (long)error.code]];
 }
 
+// 宿主 App 心跳，不需要处理
+- (void)hostAppReceiveHeartBeat {
+}
+
+// 镜像通道来源；注意：免费版不支持 Zego，SDK 已自行报错结束，这里不需要处理
+- (void)lelinkMirrorExtensionMirroringProvider:(LelinkMirrorProviderType)provider {
+}
+
 @end

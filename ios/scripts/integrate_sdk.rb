@@ -1,18 +1,20 @@
 #!/usr/bin/env ruby
 # 把 LeboSenderSDK/LBLelinkKit.xcframework 接入指定 App target，可重复执行，已有的配置不重复添加。
-# 用法：ruby integrate_sdk.rb --project <X.xcodeproj> --target <App target> [--check]
+# 用法：ruby integrate_sdk.rb --project <X.xcodeproj> --target <App target> [--camera] [--check]
 # 改动：链接 xcframework（静态库，不嵌入）与 MediaPlayer.framework；OTHER_LDFLAGS 加 -ObjC；
-#      Info.plist 加本地网络说明、蓝牙说明、Bonjour 服务 _leboremote._tcp、ATS 允许 HTTP 明文。
+#      Info.plist 加本地网络说明、蓝牙说明、Bonjour 服务 _leboremote._tcp、ATS 允许 HTTP 明文；
+#      --camera 时再加相机说明（扫码连接用）。
 # 注意：--check 只报告缺什么，不改工程。
 require "xcodeproj"
 # 注意：终端未设 UTF-8 时按 US-ASCII 读文件，Info.plist 含中文会报 invalid byte sequence
 Encoding.default_external = Encoding::UTF_8
 require "optparse"
 
-opts = { check: false }
+opts = { check: false, camera: false }
 OptionParser.new do |o|
   o.on("--project PATH") { |v| opts[:project] = v }
   o.on("--target NAME") { |v| opts[:target] = v }
+  o.on("--camera") { opts[:camera] = true }
   o.on("--check") { opts[:check] = true }
 end.parse!
 abort("需要 --project 与 --target") unless opts[:project] && opts[:target]
@@ -21,6 +23,7 @@ FRAMEWORK_REL = "LeboSenderSDK/LBLelinkKit.xcframework"
 BONJOUR = "_leboremote._tcp"
 LOCAL_NETWORK_TEXT = "用于在局域网内搜索并连接电视进行投屏"
 BLUETOOTH_TEXT = "用于发现附近可投屏的电视"
+CAMERA_TEXT = "用于扫描电视上的二维码连接投屏"
 
 project_path = File.expand_path(opts[:project])
 project_dir = File.dirname(project_path)
@@ -84,6 +87,12 @@ end
 unless plist["NSBluetoothAlwaysUsageDescription"]
   changes << "Info.plist 加 NSBluetoothAlwaysUsageDescription"
   plist["NSBluetoothAlwaysUsageDescription"] = BLUETOOTH_TEXT
+  plist_changed = true
+end
+# 注意：没有相机说明时打开摄像头会直接崩溃
+if opts[:camera] && !plist["NSCameraUsageDescription"]
+  changes << "Info.plist 加 NSCameraUsageDescription"
+  plist["NSCameraUsageDescription"] = CAMERA_TEXT
   plist_changed = true
 end
 services = plist["NSBonjourServices"] || []
